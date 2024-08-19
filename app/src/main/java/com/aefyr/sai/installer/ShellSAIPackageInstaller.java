@@ -23,7 +23,6 @@ import com.aefyr.sai.utils.Utils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,38 +33,9 @@ import java.util.regex.Pattern;
 public abstract class ShellSAIPackageInstaller extends SAIPackageInstaller {
     private static final String TAG = "ShellSAIPI";
 
-    private AtomicBoolean mIsAwaitingBroadcast = new AtomicBoolean(false);
-
-    private BroadcastReceiver mPackageInstalledBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, intent.toString());
-            if (!mIsAwaitingBroadcast.get())
-                return;
-
-            String installedPackage;
-            try {
-                installedPackage = intent.getDataString().replace("package:", "");
-                String installerPackage = getContext().getPackageManager().getInstallerPackageName(installedPackage);
-                Log.d(TAG, "installerPackage=" + installerPackage);
-                if (!BuildConfig.APPLICATION_ID.equals(installerPackage))
-                    return;
-            } catch (Exception e) {
-                Log.wtf(TAG, e);
-                return;
-            }
-
-            mIsAwaitingBroadcast.set(false);
-            dispatchCurrentSessionUpdate(InstallationStatus.INSTALLATION_SUCCEED, installedPackage);
-            installationCompleted();
-        }
-    };
 
     protected ShellSAIPackageInstaller(Context c) {
         super(c);
-        IntentFilter packageAddedFilter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
-        packageAddedFilter.addDataScheme("package");
-        getContext().registerReceiver(mPackageInstalledBroadcastReceiver, packageAddedFilter);
     }
 
     @SuppressLint("DefaultLocale")
@@ -91,11 +61,13 @@ public abstract class ShellSAIPackageInstaller extends SAIPackageInstaller {
                 ensureCommandSucceeded(getShell().exec(new Shell.Command("pm", "install-write", "-S", String.valueOf(apkSource.getApkLength()), String.valueOf(sessionId), String.format("%d.apk", currentApkFile++)), apkSource.openApkInputStream()));
             }
 
-            mIsAwaitingBroadcast.set(true);
             Shell.Result installationResult = getShell().exec(new Shell.Command("pm", "install-commit", String.valueOf(sessionId)));
             if (!installationResult.isSuccessful()) {
-                mIsAwaitingBroadcast.set(false);
                 dispatchCurrentSessionUpdate(InstallationStatus.INSTALLATION_FAILED, getContext().getString(R.string.installer_error_shell, getInstallerName(), getSessionInfo(apkSource) + "\n\n" + installationResult.toString()));
+                installationCompleted();
+            }
+            if (installationResult.isSuccessful() && installationResult.out.equalsIgnoreCase("Success")) {
+                dispatchCurrentSessionUpdate(InstallationStatus.INSTALLATION_SUCCEED, apkSource.getAppName());
                 installationCompleted();
             }
         } catch (Exception e) {

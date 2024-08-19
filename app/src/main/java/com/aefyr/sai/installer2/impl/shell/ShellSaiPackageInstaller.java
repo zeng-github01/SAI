@@ -13,6 +13,7 @@ import android.util.Pair;
 
 import com.aefyr.sai.BuildConfig;
 import com.aefyr.sai.R;
+import com.aefyr.sai.installer.SAIPackageInstaller;
 import com.aefyr.sai.installer2.base.model.AndroidPackageInstallerError;
 import com.aefyr.sai.installer2.base.model.SaiPiSessionParams;
 import com.aefyr.sai.installer2.base.model.SaiPiSessionState;
@@ -29,6 +30,7 @@ import com.aefyr.sai.utils.Utils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -39,7 +41,6 @@ import java.util.regex.Pattern;
 public abstract class ShellSaiPackageInstaller extends BaseSaiPackageInstaller {
 
     private static Semaphore mSharedSemaphore = new Semaphore(1);
-    private AtomicBoolean mAwaitingBroadcast = new AtomicBoolean(false);
 
     private ExecutorService mExecutor = Executors.newFixedThreadPool(4);
     private HandlerThread mWorkerThread = new HandlerThread("RootlessSaiPi Worker");
@@ -47,43 +48,11 @@ public abstract class ShellSaiPackageInstaller extends BaseSaiPackageInstaller {
 
     private String mCurrentSessionId;
 
-    //TODO read package from apk stream, this is too potentially inconsistent
-    private final BroadcastReceiver mPackageInstalledBroadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Log.d(tag(), intent.toString());
-
-            if (!mAwaitingBroadcast.get())
-                return;
-
-            mAwaitingBroadcast.set(false);
-
-            String installedPackage;
-            try {
-                installedPackage = intent.getDataString().replace("package:", "");
-                String installerPackage = getContext().getPackageManager().getInstallerPackageName(installedPackage);
-                Log.d(tag(), "installerPackage=" + installerPackage);
-                if (!BuildConfig.APPLICATION_ID.equals(installerPackage))
-                    return;
-            } catch (Exception e) {
-                Log.wtf(tag(), e);
-                return;
-            }
-
-            setSessionState(mCurrentSessionId, new SaiPiSessionState.Builder(mCurrentSessionId, SaiPiSessionStatus.INSTALLATION_SUCCEED).packageName(installedPackage).resolvePackageMeta(getContext()).build());
-            unlockInstallation();
-        }
-    };
-
     protected ShellSaiPackageInstaller(Context c) {
         super(c);
 
         mWorkerThread.start();
         mWorkerHandler = new Handler(mWorkerThread.getLooper());
-
-        IntentFilter packageAddedFilter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
-        packageAddedFilter.addDataScheme("package");
-        getContext().registerReceiver(mPackageInstalledBroadcastReceiver, packageAddedFilter, null, mWorkerHandler);
     }
 
     @Override
@@ -118,10 +87,8 @@ public abstract class ShellSaiPackageInstaller extends BaseSaiPackageInstaller {
                 ensureCommandSucceeded(getShell().exec(new Shell.Command("pm", "install-write", "-S", String.valueOf(apkSource.getApkLength()), String.valueOf(androidSessionId), String.format("%d.apk", currentApkFile++)), apkSource.openApkInputStream()));
             }
 
-            mAwaitingBroadcast.set(true);
             Shell.Result installationResult = getShell().exec(new Shell.Command("pm", "install-commit", String.valueOf(androidSessionId)));
             if (!installationResult.isSuccessful()) {
-                mAwaitingBroadcast.set(false);
 
                 String shortError = getContext().getString(R.string.installer_error_shell, getInstallerName(), getSessionInfo(apkSource) + "\n\n" + parseError(installationResult));
                 setSessionState(sessionId, new SaiPiSessionState.Builder(sessionId, SaiPiSessionStatus.INSTALLATION_FAILED)
@@ -129,6 +96,13 @@ public abstract class ShellSaiPackageInstaller extends BaseSaiPackageInstaller {
                         .error(shortError, shortError + "\n\n" + installationResult.toString())
                         .build());
 
+                unlockInstallation();
+            }
+
+            if (installationResult.isSuccessful() && installationResult.out.equalsIgnoreCase("Success")) {
+                setSessionState(sessionId,new SaiPiSessionState.Builder(sessionId, SaiPiSessionStatus.INSTALLATION_SUCCEED)
+                        .appTempName(appTempName)
+                        .build());
                 unlockInstallation();
             }
         } catch (Exception e) {
