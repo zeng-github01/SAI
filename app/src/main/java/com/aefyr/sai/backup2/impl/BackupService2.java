@@ -248,7 +248,7 @@ public class BackupService2 extends Service implements BackupStorage.BackupProgr
             cancelTaskIntent.putExtra(EXTRA_STORAGE_ID, taskInfo.storageId);
             cancelTaskIntent.putExtra(EXTRA_TASK_TOKEN, taskInfo.taskToken);
 
-            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             taskInfo.cachedCancelPendingIntent = cancelTaskPendingIntent;
         }
 
@@ -333,7 +333,7 @@ public class BackupService2 extends Service implements BackupStorage.BackupProgr
             cancelTaskIntent.putExtra(EXTRA_STORAGE_ID, taskInfo.storageId);
             cancelTaskIntent.putExtra(EXTRA_TASK_TOKEN, taskInfo.taskToken);
 
-            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             taskInfo.cachedCancelPendingIntent = cancelTaskPendingIntent;
         }
 

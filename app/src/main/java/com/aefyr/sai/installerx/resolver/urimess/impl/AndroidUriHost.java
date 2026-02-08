@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 
 import androidx.documentfile.provider.DocumentFile;
@@ -52,13 +53,24 @@ public class AndroidUriHost implements UriHost {
         try {
             return new ProcSelfFdUriAsFile(uri);
         } catch (Exception e) {
-            boolean hasReadExternalStoragePermission = true;
-            if (Utils.apiIsAtLeast(Build.VERSION_CODES.M)) {
-                hasReadExternalStoragePermission = mContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            // --- 迁移开始 ---
+            boolean hasFileAccess = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // Android 11+ 检查是否拥有“所有文件访问权限”
+                hasFileAccess = Environment.isExternalStorageManager();
+            } else {
+                // 旧版本检查传统的读取权限
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    hasFileAccess = mContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+                }
             }
 
-            Logs.logException(new IOException(String.format("Unable to use /proc/self/fd, READ_EXTERNAL_STORAGE permission = %s", hasReadExternalStoragePermission)));
+            Logs.logException(new IOException(String.format(
+                    "Unable to use /proc/self/fd, File Access Permission = %s", hasFileAccess)));
+
+            // 如果高效方案失败，依然执行拷贝逻辑作为兜底
             return new CopyFileUriAsFile(uri, MAX_FILE_LENGTH_FOR_COPY);
+            // --- 迁移结束 ---
         }
     }
 

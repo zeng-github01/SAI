@@ -202,8 +202,14 @@ public class InstallerXDialogFragment extends BaseBottomSheetDialogFragment impl
 
     private void pickFilesWithSaf(boolean ignorePermissions) {
         if (Utils.apiIsAtLeast(30) && !ignorePermissions) {
-            if (requireContext().checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                SimpleAlertDialogFragment.newInstance(requireContext(), R.string.warning, R.string.installerx_thank_you_scoped_storage_very_cool).show(getChildFragmentManager(), DIALOG_TAG_Q_SAF_WARNING);
+            // 关键修改：判断是否拥有“所有文件访问权限”
+            if (!Environment.isExternalStorageManager()) {
+                // 如果没有权限，弹出那个“非常有意思”的警告弹窗
+                SimpleAlertDialogFragment.newInstance(
+                        requireContext(),
+                        R.string.warning,
+                        R.string.installerx_thank_you_scoped_storage_very_cool
+                ).show(getChildFragmentManager(), DIALOG_TAG_Q_SAF_WARNING);
                 return;
             }
         }
