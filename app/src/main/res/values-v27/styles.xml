@@ -14,6 +14,8 @@
         <item name="android:statusBarColor">@color/colorPureWhite</item>
         <item name="alertDialogTheme">@style/AlertDialog.AppTheme.Light</item>
         <item name="android:textViewStyle">@style/SAITextViewStyle</item>
+        <item name="filePickerDialogSelectButtonStyle">@style/SAIMaterialButton</item>
+        <item name="filePickerDialogCancelButtonStyle">@style/SAIMaterialButton.Outlined</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:navigationBarColor">@color/colorPureWhite</item>
         <item name="colorControlActivated">?attr/colorAccent</item>
@@ -35,6 +37,8 @@
         <item name="android:textColorSecondary">@color/colorAlmostWhite</item>
         <item name="alertDialogTheme">@style/AlertDialog.AppTheme.Dark</item>
         <item name="android:textViewStyle">@style/SAITextViewStyle</item>
+        <item name="filePickerDialogSelectButtonStyle">@style/SAIMaterialButton</item>
+        <item name="filePickerDialogCancelButtonStyle">@style/SAIMaterialButton.Outlined</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:navigationBarColor">@color/colorGreaterGrey</item>
         <item name="colorControlActivated">?attr/colorAccent</item>
