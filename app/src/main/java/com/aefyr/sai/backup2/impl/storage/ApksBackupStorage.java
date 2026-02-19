@@ -43,6 +43,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
 
 public abstract class ApksBackupStorage extends BaseBackupStorage {
@@ -80,7 +81,6 @@ public abstract class ApksBackupStorage extends BaseBackupStorage {
     protected abstract void deleteFile(Uri uri);
 
     protected abstract long getFileSize(Uri uri);
-
     @Override
     public Backup getBackupByUri(Uri uri) throws Exception {
 
@@ -89,6 +89,12 @@ public abstract class ApksBackupStorage extends BaseBackupStorage {
         try (ZipInputStream zipInputStream = new ZipInputStream(openFileInputStream(uri))) {
             ZipEntry zipEntry;
             while ((zipEntry = zipInputStream.getNextEntry()) != null) {
+//                String name = zipEntry.getName();
+//                if (name.contains("..") || name.startsWith("/")) {
+//                    zipInputStream.closeEntry();
+//                    continue;
+//                }
+
                 if (zipEntry.getName().equals(SaiExportedAppMeta.META_FILE)) {
                     if (mutableBackup != null)
                         continue;
@@ -134,6 +140,8 @@ public abstract class ApksBackupStorage extends BaseBackupStorage {
                 if (mutableBackup != null && cachedIconFile != null)
                     break;
             }
+        } catch (ZipException exception) {
+            Log.e(TAG, "Error occurred while parsing backup", exception);
         }
 
         if (mutableBackup == null)
@@ -171,6 +179,8 @@ public abstract class ApksBackupStorage extends BaseBackupStorage {
                     return zipInputStream;
                 }
             }
+        } catch (ZipException exception) {
+            Log.e(TAG, "Error occurred while parsing backup", exception);
         }
 
         throw new IOException("Icon gone for icon uri " + iconUri.toString());

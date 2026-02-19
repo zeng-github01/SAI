@@ -99,12 +99,19 @@ public class DefaultBackupManager implements BackupManager, BackupStorage.Observ
         packagesStuffIntentFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         packagesStuffIntentFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         packagesStuffIntentFilter.addDataScheme("package");
-        mContext.registerReceiver(new BroadcastReceiver() {
+
+        BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 updateAppInAppList(Objects.requireNonNull(intent.getData()).getSchemeSpecificPart());
             }
-        }, packagesStuffIntentFilter, null, mWorkerHandler);
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            mContext.registerReceiver(receiver, packagesStuffIntentFilter, null, mWorkerHandler, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            mContext.registerReceiver(receiver, packagesStuffIntentFilter, null, mWorkerHandler);
+        }
 
         mWorkerHandler.post(this::fetchPackages);
 

@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -172,7 +173,11 @@ public class BackupService2 extends Service implements BackupStorage.BackupProgr
         if (mTasks.isEmpty() && mBatchTasks.isEmpty()) {
             die();
         } else {
-            startForeground(NOTIFICATION_ID, buildStatusNotification());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, buildStatusNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(NOTIFICATION_ID, buildStatusNotification());
+            }
         }
     }
 
@@ -223,7 +228,11 @@ public class BackupService2 extends Service implements BackupStorage.BackupProgr
             mNotificationManager.createNotificationChannel(new NotificationChannel(NOTIFICATION_CHANNEL_ID, getString(R.string.backup_backup), NotificationManager.IMPORTANCE_DEFAULT));
         }
 
-        startForeground(NOTIFICATION_ID, buildStatusNotification());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, buildStatusNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, buildStatusNotification());
+        }
     }
 
     private Notification buildStatusNotification() {
@@ -248,7 +257,7 @@ public class BackupService2 extends Service implements BackupStorage.BackupProgr
             cancelTaskIntent.putExtra(EXTRA_STORAGE_ID, taskInfo.storageId);
             cancelTaskIntent.putExtra(EXTRA_TASK_TOKEN, taskInfo.taskToken);
 
-            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+            cancelTaskPendingIntent = PendingIntent.getService(this, 0, cancelTaskIntent, PendingIntent.FLAG_IMMUTABLE);
             taskInfo.cachedCancelPendingIntent = cancelTaskPendingIntent;
         }
 

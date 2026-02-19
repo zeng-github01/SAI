@@ -64,7 +64,12 @@ public class RootlessSAIPackageInstaller extends SAIPackageInstaller {
     private RootlessSAIPackageInstaller(Context c) {
         super(c);
         mPackageInstaller = getContext().getPackageManager().getPackageInstaller();
-        getContext().registerReceiver(mFurtherInstallationEventsReceiver, new IntentFilter(RootlessSAIPIService.ACTION_INSTALLATION_STATUS_NOTIFICATION));
+        IntentFilter filter = new IntentFilter(RootlessSAIPIService.ACTION_INSTALLATION_STATUS_NOTIFICATION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getContext().registerReceiver(mFurtherInstallationEventsReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            getContext().registerReceiver(mFurtherInstallationEventsReceiver, filter);
+        }
         sInstance = this;
     }
 
@@ -94,6 +99,7 @@ public class RootlessSAIPackageInstaller extends SAIPackageInstaller {
 
             Intent callbackIntent = new Intent(getContext(), RootlessSAIPIService.class);
             PendingIntent pendingIntent = PendingIntent.getService(getContext(), 0, callbackIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+            callbackIntent.setPackage(getContext().getPackageName());
             session.commit(pendingIntent.getIntentSender());
         } catch (Exception e) {
             Log.w(TAG, e);

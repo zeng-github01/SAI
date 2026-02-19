@@ -1,6 +1,5 @@
 package com.aefyr.sai.ui.dialogs;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.DialogInterface;
@@ -135,7 +134,7 @@ public class InstallerXDialogFragment extends BaseBottomSheetDialogFragment impl
         });
 
         view.findViewById(R.id.button_installerx_fp_internal).setOnClickListener(v -> checkPermissionsAndPickFiles());
-        view.findViewById(R.id.button_installerx_fp_saf).setOnClickListener(v -> pickFilesWithSaf(false));
+        view.findViewById(R.id.button_installerx_fp_saf).setOnClickListener(v -> pickFilesWithSaf());
 
         TextView warningTv = view.findViewById(R.id.tv_installerx_warning);
         mViewModel.getState().observe(this, state -> {
@@ -200,27 +199,21 @@ public class InstallerXDialogFragment extends BaseBottomSheetDialogFragment impl
         FilePickerDialogFragment.newInstance(null, getString(R.string.installer_pick_apks), properties).show(getChildFragmentManager(), "dialog_files_picker");
     }
 
-    private void pickFilesWithSaf(boolean ignorePermissions) {
-        if (Utils.apiIsAtLeast(30) && !ignorePermissions) {
-            // 关键修改：判断是否拥有“所有文件访问权限”
-            if (!Environment.isExternalStorageManager()) {
-                // 如果没有权限，弹出那个“非常有意思”的警告弹窗
-                SimpleAlertDialogFragment.newInstance(
-                        requireContext(),
-                        R.string.warning,
-                        R.string.installerx_thank_you_scoped_storage_very_cool
-                ).show(getChildFragmentManager(), DIALOG_TAG_Q_SAF_WARNING);
-                return;
-            }
-        }
-
+    private void pickFilesWithSaf() {
+        // 既然不涉及全盘权限检查，直接构造 Intent 即可
         Intent getContentIntent = new Intent(Intent.ACTION_GET_CONTENT);
-        getContentIntent.setType("*/*");
-        getContentIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
-        getContentIntent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-        getContentIntent.addCategory(Intent.CATEGORY_OPENABLE);
-        startActivityForResult(Intent.createChooser(getContentIntent, getString(R.string.installer_pick_apks)), REQUEST_CODE_GET_FILES);
 
+        // 基础配置
+        getContentIntent.setType("*/*"); // 允许选择所有类型的文件
+        getContentIntent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); // 支持多选
+        getContentIntent.putExtra(Intent.EXTRA_LOCAL_ONLY, true); // 仅限本地文件，避免触发云端异步加载的坑
+        getContentIntent.addCategory(Intent.CATEGORY_OPENABLE); // 过滤掉无法以流形式打开的虚拟文件
+
+        // 调起系统选择器
+        startActivityForResult(
+                Intent.createChooser(getContentIntent, getString(R.string.installer_pick_apks)),
+                REQUEST_CODE_GET_FILES
+        );
     }
 
     @Override
@@ -238,7 +231,7 @@ public class InstallerXDialogFragment extends BaseBottomSheetDialogFragment impl
                         checkPermissionsAndPickFiles();
                     break;
                 case PICK_WITH_SAF:
-                    pickFilesWithSaf(true);
+                    pickFilesWithSaf();
                     break;
             }
         }
@@ -281,7 +274,7 @@ public class InstallerXDialogFragment extends BaseBottomSheetDialogFragment impl
             case DIALOG_TAG_Q_SAF_WARNING:
                 mActionAfterGettingStoragePermissions = PICK_WITH_SAF;
                 if (PermissionsUtils.checkAndRequestStoragePermissions(this)) {
-                    pickFilesWithSaf(false);
+                    pickFilesWithSaf();
                 }
                 break;
         }

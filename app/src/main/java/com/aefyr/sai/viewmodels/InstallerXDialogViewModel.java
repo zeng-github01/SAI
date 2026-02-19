@@ -209,7 +209,7 @@ public class InstallerXDialogViewModel extends ViewModel {
         @Override
         protected LoadMetaTaskResult doWork(LoadMetaTaskInput input) {
             List<Uri> apkSourceUris = flattenInputToUris(input);
-            if (apkSourceUris.size() == 0)
+            if (apkSourceUris.isEmpty())
                 throw new IllegalArgumentException("Expected at least 1 file in input");
 
             DefaultSplitApkSourceMetaResolver metaResolver = new DefaultSplitApkSourceMetaResolver(mContext, new DefaultAppMetaExtractor(mContext));
